@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import chain
 from logging.handlers import RotatingFileHandler
 import logging
@@ -35,6 +35,36 @@ logger.addHandler(file_handler)
 logger.addHandler(handler)
 
 
+def is_integer(x):
+    try:
+        int(x)
+        return True
+    except:
+        return False
+
+
+def format_timedelta(delta: timedelta, format_str: str) -> str:
+    total_seconds = int(delta.total_seconds())
+    days, remainder = divmod(total_seconds, 86400)  # 86400 seconds in a day
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    # Mapping for format specifiers
+    replacements = {
+        "%D": f"{days:02}",
+        "%H": f"{hours:02}",
+        "%M": f"{minutes:02}",
+        "%S": f"{seconds:02}",
+        "%f": f"{delta.microseconds:06}",
+    }
+
+    # Replace format specifiers in the format string
+    for key, value in replacements.items():
+        format_str = format_str.replace(key, value)
+
+    return format_str
+
+
 def read_timers(reader: csv.DictReader) -> Timers:
     timers: Timers = {}
 
@@ -61,21 +91,31 @@ def get_timer(timers: Timers, label: str) -> typing.Optional[Timer]:
     return filtered_timers[-1]
 
 
-def display_timers(timers: typing.List[Timer], label: str):
+def display_timers(timers: typing.List[Timer], label: str, format: str):
     # TODO: better display
     if len(timers) == 0:
         print(f"No timers for label {label}")
         return
 
     print(label)
+
     for i, timer in enumerate(timers, 1):
-        start = timer["start"].strftime("%H:%M:%S") if timer["start"] else "not started"
+
+        start = timer["start"].strftime(format) if timer["start"] else "not started"
         end = (
-            timer["end"].strftime("%H:%M:%S")
+            timer["end"].strftime(format)
             if timer["end"]
             else "ongoing" if start != "not started" else "not started"
         )
-        print(f"{i}. {start} - {end}")
+        diff_str = "None"
+        if timer["start"]:
+            if timer["end"]:
+                diff = timer["end"] - timer["start"]
+            else:
+                diff = datetime.now() - timer["start"]
+            diff_str = format_timedelta(diff, format)
+
+        print(f"{i}. {start} - {end} = {diff_str}")
 
 
 if __name__ == "__main__":
@@ -98,6 +138,9 @@ if __name__ == "__main__":
         type=argparse.FileType("r+"),
         help="the file where the timers should be appended to",
     )
+    parser.add_argument(
+        "--format", default="%H:%M:%S", help="output UTC time in given format"
+    )
     parser.add_argument("-v", "--view", help="view timers of given label")
 
     args = parser.parse_args()
@@ -115,6 +158,11 @@ if __name__ == "__main__":
     timers = read_timers(reader)
 
     if args.create:
+        timer: typing.Optional[Timer] = get_timer(timers, args.create)
+        if not (not timer or (timer and timer["start"] and timer["end"])):
+            logger.debug(f"Timer {args.create} has an unfinished timer.")
+            exit(1)
+
         new_timer: Timer = {
             "id": len(timers.get(args.create, [])) + 1,
             "label": args.create,
@@ -130,7 +178,29 @@ if __name__ == "__main__":
         logger.info(f"Created new timer: {new_timer['label']}; id: {new_timer['id']}")
     elif args.delete:
         options: typing.List[Timer] = timers.get(args.delete, [])
-        pass
+
+        display_timers(options, args.delete)
+        if len(options) == 0:
+            exit(0)
+
+        id = -1
+        timer_to_delete = None
+        while timer_to_delete == None:
+            val = input("Select a timer to delete: ")
+            if not is_integer(val):
+                logger.debug(f"{val} is not a number, choose again")
+                continue
+
+            try:
+                id = int(val) - 1
+                timer_to_delete = options[id]
+                break
+            except:
+                logger.debug("Unable to find timer, choose again")
+
+        logger.info(f"Deleting timer {args.delete}")
+
+        timers[args.delete].pop(id)
     elif args.start:
         timer: typing.Optional[Timer] = get_timer(timers, args.start)
         if not timer:
@@ -188,10 +258,13 @@ if __name__ == "__main__":
             timers[args.resume] = []
         timers[args.resume].append(new_timer)
         logger.info(f"Resumed timer for: {new_timer['label']}; id: {new_timer['id']}")
+
     if args.view:
-        display_timers(timers.get(args.view, []), args.view)
+        display_timers(timers.get(args.view, []), args.view, args.format)
 
     args.log.seek(0)
+    args.log.truncate()
+
     writer.writeheader()
     writer.writerows(list(chain(*timers.values())))
     args.log.close()
