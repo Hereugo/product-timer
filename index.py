@@ -49,8 +49,6 @@ def get_label(args) -> str:
         return args.end
     elif args.resume:
         return args.resume
-    elif args.view:
-        return args.view
     return "--empty--"
 
 
@@ -130,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f", "--format", default="%H:%M:%S", help="output UTC time in given format"
     )
-    parser.add_argument("-v", "--view", help="view timers of given label")
+    parser.add_argument("-v", "--view", nargs="+", help="view timers of given label")
 
     args = parser.parse_args()
 
@@ -250,7 +248,8 @@ if __name__ == "__main__":
         logger.info(f"Resumed timer for: {label}; id: {new_timer['id']}")
 
     if args.view:
-        display_timers(timers.get(label, []), label, args.format)
+        for label in args.view:
+            display_timers(timers.get(label, []), label, args.format)
 
     args.log.seek(0)
     args.log.truncate()
