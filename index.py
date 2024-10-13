@@ -179,7 +179,7 @@ if __name__ == "__main__":
     elif args.delete:
         options: typing.List[Timer] = timers.get(args.delete, [])
 
-        display_timers(options, args.delete)
+        display_timers(options, args.delete, args.format)
         if len(options) == 0:
             exit(0)
 
