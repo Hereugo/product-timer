@@ -38,20 +38,6 @@ logger.addHandler(file_handler)
 logger.addHandler(handler)
 
 
-def get_label(args) -> str:
-    if args.create:
-        return args.create
-    elif args.delete:
-        return args.delete
-    elif args.start:
-        return args.start
-    elif args.end:
-        return args.end
-    elif args.resume:
-        return args.resume
-    return "--empty--"
-
-
 def read_timers(reader: csv.DictReader) -> Timers:
     timers: Timers = {}
 
@@ -111,13 +97,18 @@ if __name__ == "__main__":
     csvfile = open("./timers.csv", "r+")
 
     parser = argparse.ArgumentParser(description="start/finish timers")
-    group_crud = parser.add_mutually_exclusive_group()
+    subparsers = parser.add_subparsers(required=True)
 
-    group_crud.add_argument("-c", "--create", help="creates new timer of given label")
-    group_crud.add_argument("-d", "--delete", help="delete timer of given label")
-    group_crud.add_argument("-s", "--start", help="start timer of given label")
-    group_crud.add_argument("-e", "--end", help="stops timer of given label")
-    group_crud.add_argument("-r", "--resume", help="resumes timer of given label")
+    # group_crud = parser.add_mutually_exclusive_group()
+    parser_crud = subparsers.add_parser("run")
+
+    parser_crud.add_argument(
+        "action",
+        choices=["create", "delete", "start", "end", "view"],
+        help="Operation on timer",
+    )
+    parser_crud.add_argument("labels", nargs="+", help="labels of the timer")
+
     parser.add_argument(
         "-l",
         "--log",
@@ -128,7 +119,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f", "--format", default="%H:%M:%S", help="output UTC time in given format"
     )
-    parser.add_argument("-v", "--view", nargs="+", help="view timers of given label")
 
     args = parser.parse_args()
 
@@ -143,31 +133,30 @@ if __name__ == "__main__":
     reader = csv.DictReader(args.log, Timer.keys())
 
     timers = read_timers(reader)
-    label: str = get_label(args)
 
-    if args.create:
-        timer: typing.Optional[Timer] = get_timer(timers, label)
+    if args.action == "create":
+        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not (not timer or (timer and timer["start"] and timer["end"])):
             logger.debug(f"Timer {args.create} has an unfinished timer.")
             exit(1)
 
         new_timer: Timer = {
-            "id": len(timers.get(label, [])) + 1,
-            "label": label,
+            "id": len(timers.get(args.labels[0], [])) + 1,
+            "label": args.labels[0],
             "start": None,
             "end": None,
             "created_at": datetime.now(),
         }
 
-        if not label in timers:
-            timers[label] = []
-        timers[label].append(new_timer)
+        if not args.labels[0] in timers:
+            timers[args.labels[0]] = []
+        timers[args.labels[0]].append(new_timer)
 
-        logger.info(f"Created new timer: {label}; id: {new_timer['id']}")
-    elif args.delete:
-        options: typing.List[Timer] = timers.get(label, [])
+        logger.info(f"Created new timer: {args.labels[0]}; id: {new_timer['id']}")
+    elif args.action == "delete":
+        options: typing.List[Timer] = timers.get(args.labels[0], [])
 
-        display_timers(options, label, args.format)
+        display_timers(options, args.labels[0], args.format)
         if len(options) == 0:
             exit(0)
 
@@ -186,69 +175,42 @@ if __name__ == "__main__":
             except:
                 logger.debug("Unable to find timer, choose again")
 
-        logger.info(f"Deleting timer {label}")
+        logger.info(f"Deleting timer {args.labels[0]}")
 
-        timers[label].pop(id)
-    elif args.start:
-        timer: typing.Optional[Timer] = get_timer(timers, label)
+        timers[args.labels[0]].pop(id)
+    elif args.action == "start":
+        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not timer:
-            logger.debug(f"Timer {label} doesn't exist")
+            logger.debug(f"Timer {args.labels[0]} doesn't exist")
             exit(1)
 
         if timer["end"]:
-            logger.debug(f"Cannot start timer {label} as it was stopped")
+            logger.debug(f"Cannot start timer {args.labels[0]} as it was stopped")
 
         if timer["start"]:
-            logger.debug(f"Timer {label} has already started")
+            logger.debug(f"Timer {args.labels[0]} has already started")
             exit(1)
 
         timer["start"] = datetime.now()
-        logger.info(f"Started timer: {label}; id: {timer['id']}")
-    elif args.end:
-        timer: typing.Optional[Timer] = get_timer(timers, label)
+        logger.info(f"Started timer: {args.labels[0]}; id: {timer['id']}")
+    elif args.action == "end":
+        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not timer:
-            logger.debug(f"Timer {label} doesn't exist")
+            logger.debug(f"Timer {args.labels[0]} doesn't exist")
             exit(1)
 
         if not timer["start"]:
-            logger.debug(f"Timer {label} was not started")
+            logger.debug(f"Timer {args.labels[0]} was not started")
             exit(1)
 
         if timer["end"]:
-            logger.debug(f"Timer {label} has already stopped")
+            logger.debug(f"Timer {args.labels[0]} has already stopped")
             exit(1)
 
         timer["end"] = datetime.now()
-        logger.info(f"Stopped timer: {label}; id: {timer['id']}")
-    elif args.resume:
-        timer: typing.Optional[Timer] = get_timer(timers, label)
-        if not timer:
-            logger.debug(f"Timer {label} doesn't exist")
-            exit(1)
-
-        if not timer["start"]:
-            logger.debug(f"Timer {label} was not started")
-            exit(1)
-
-        if not timer["end"]:
-            logger.debug(f"Timer {label} was not yet stopped")
-            exit(1)
-
-        new_timer: Timer = {
-            "id": len(timers.get(label, [])) + 1,
-            "label": label,
-            "start": datetime.now(),
-            "end": None,
-            "created_at": datetime.now(),
-        }
-
-        if not label in timers:
-            timers[label] = []
-        timers[label].append(new_timer)
-        logger.info(f"Resumed timer for: {label}; id: {new_timer['id']}")
-
-    if args.view:
-        for label in args.view:
+        logger.info(f"Stopped timer: {args.labels[0]}; id: {timer['id']}")
+    elif args.action == "view":
+        for label in args.labels:
             display_timers(timers.get(label, []), label, args.format)
 
     args.log.seek(0)

@@ -11,12 +11,14 @@
 flags:
 
 ```
-- "-c --create [LABEL]" create new timer with some label
-- "-d --delete [LABEL]" displays a list of timers of some label to which it need to be deleated
-- "-s --start [LABEL]" start timer with some label
-- "-e --end [LABEL]" stop timer at label
-- "-r --resume [LABEL]" resume timer at label
+[ACTION] = {create, delete, start, end, view}
+- [ACTION] [LABELS ...]
+    - create: create new timer with some label
+    - delete: display a list of timers of some label to which it need to be deleted
+    - start: start timer with some label
+    - end: stop timer at label
+    - view: view active timers in a list
+
 - "-l --log [FILE]" the file where the timers should be appended to
 - "-f --format [TIME_FORMAT]" view timers of given label
-- "-v --view [LABEL]" view active timers in a list
 ```
