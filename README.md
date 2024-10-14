@@ -22,3 +22,21 @@ flags:
 - "-l --log [FILE]" the file where the timers should be appended to
 - "-f --format [TIME_FORMAT]" view timers of given label
 ```
+
+## Example:
+
+```bash
+python3 index.py run create project1
+python3 index.py run start project1
+python3 index.py run end project1
+
+python3 index.py run create project2
+python3 index.py run start project2
+python3 index.py run end project2
+
+python3 index.py run create project3
+python3 index.py run start project3
+python3 index.py run end project3
+
+python3 index.py run view project1 project2 project3
+```

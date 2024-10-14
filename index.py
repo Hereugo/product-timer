@@ -91,6 +91,11 @@ def display_timers(timers: typing.List[Timer], label: str, format: str):
 
 
 if __name__ == "__main__":
+    # TODO:
+    # - create a folder at home directory: timeugo
+    # - save necessary stuff there
+    # - maybe config file also
+
     if not os.path.isfile("./timers.csv"):
         with open("./timers.csv", "w") as file:
             pass
