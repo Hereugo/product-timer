@@ -1,4 +1,4 @@
-# product-timer
+# Timeugo
 
 - I want to have a simple CLI tool that when called, will start the timer, when called again will stop.
 - We must save the period in csv format:

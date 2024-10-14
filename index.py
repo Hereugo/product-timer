@@ -101,7 +101,7 @@ if __name__ == "__main__":
             pass
     csvfile = open("./timers.csv", "r+")
 
-    parser = argparse.ArgumentParser(description="start/finish timers")
+    parser = argparse.ArgumentParser(prog="timeugo", description="start/finish timers")
     subparsers = parser.add_subparsers(required=True)
 
     parser_crud = subparsers.add_parser("run")
