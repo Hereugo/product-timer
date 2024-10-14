@@ -99,7 +99,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="start/finish timers")
     subparsers = parser.add_subparsers(required=True)
 
-    # group_crud = parser.add_mutually_exclusive_group()
     parser_crud = subparsers.add_parser("run")
 
     parser_crud.add_argument(
@@ -133,9 +132,9 @@ if __name__ == "__main__":
     reader = csv.DictReader(args.log, Timer.keys())
 
     timers = read_timers(reader)
+    timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
 
     if args.action == "create":
-        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not (not timer or (timer and timer["start"] and timer["end"])):
             logger.debug(f"Timer {args.create} has an unfinished timer.")
             exit(1)
@@ -179,7 +178,6 @@ if __name__ == "__main__":
 
         timers[args.labels[0]].pop(id)
     elif args.action == "start":
-        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not timer:
             logger.debug(f"Timer {args.labels[0]} doesn't exist")
             exit(1)
@@ -194,7 +192,6 @@ if __name__ == "__main__":
         timer["start"] = datetime.now()
         logger.info(f"Started timer: {args.labels[0]}; id: {timer['id']}")
     elif args.action == "end":
-        timer: typing.Optional[Timer] = get_timer(timers, args.labels[0])
         if not timer:
             logger.debug(f"Timer {args.labels[0]} doesn't exist")
             exit(1)
