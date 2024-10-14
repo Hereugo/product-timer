@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import chain
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 import logging
 import argparse
 import typing
@@ -25,11 +26,16 @@ class Timer(typing.TypedDict):
 
 
 Timers = dict[str, typing.List[Timer]]
+home = Path.home()
+dir = "timeugo"
 
+os.makedirs(home / dir, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-file_handler = RotatingFileHandler("logs.log", maxBytes=5000000, backupCount=5)
+file_handler = RotatingFileHandler(
+    home / dir / "logs.log", maxBytes=5000000, backupCount=5
+)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 handler = logging.StreamHandler(sys.stdout)
 file_handler.setFormatter(formatter)
@@ -90,16 +96,16 @@ def display_timers(timers: typing.List[Timer], label: str, format: str):
         print(f"{i}. {start} - {end} = {diff_str}")
 
 
-if __name__ == "__main__":
+def main():
     # TODO:
     # - create a folder at home directory: timeugo
     # - save necessary stuff there
     # - maybe config file also
 
-    if not os.path.isfile("./timers.csv"):
-        with open("./timers.csv", "w") as file:
+    if not os.path.exists(home / dir / "timers.csv"):
+        with open(home / dir / "timers.csv", "w") as file:
             pass
-    csvfile = open("./timers.csv", "r+")
+    csvfile = open(home / dir / "timers.csv", "r+")
 
     parser = argparse.ArgumentParser(prog="timeugo", description="start/finish timers")
     subparsers = parser.add_subparsers(required=True)
@@ -221,3 +227,7 @@ if __name__ == "__main__":
     writer.writeheader()
     writer.writerows(list(chain(*timers.values())))
     args.log.close()
+
+
+if __name__ == "__main__":
+    main()
